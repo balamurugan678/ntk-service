@@ -12,6 +12,16 @@
     <properties>
         <scala.tools.version>2.11</scala.tools.version>
         <scala.version>2.11.8</scala.version>
+        <akka.http.version>10.1.4</akka.http.version>
+        <akka.version>2.5.19</akka.version>
+        <json4s.version>3.6.3</json4s.version>
+        <scala.logging.version>3.5.0</scala.logging.version>
+        <swagger.akka.http.version>0.7.2</swagger.akka.http.version>
+        <swagger.ui.akka.http.version>1.0.0</swagger.ui.akka.http.version>
+        <akka.http.json4s.version>1.19.0</akka.http.json4s.version>
+        <logback.version>1.2.3</logback.version>
+        <elastic.rest.client.version>6.6.0</elastic.rest.client.version>
+        <jackson.annotations.version>2.9.5</jackson.annotations.version>
     </properties>
 
 
@@ -19,57 +29,67 @@
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http_2.11</artifactId>
-            <version>10.1.4</version>
+            <version>${akka.http.version}</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-stream_2.11</artifactId>
-            <version>2.5.19</version>
+            <version>${akka.version}</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_2.11</artifactId>
-            <version>2.5.19</version>
+            <version>${akka.version}</version>
         </dependency>
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-ext_2.11</artifactId>
-            <version>3.5.3</version>
+            <version>${json4s.version}</version>
         </dependency>
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-native_2.11</artifactId>
-            <version>3.5.3</version>
+            <version>${json4s.version}</version>
         </dependency>
         <dependency>
             <groupId>com.typesafe.scala-logging</groupId>
             <artifactId>scala-logging_2.11</artifactId>
-            <version>3.5.0</version>
+            <version>${scala.logging.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.swagger-akka-http</groupId>
             <artifactId>swagger-akka-http_2.11</artifactId>
-            <version>0.7.2</version>
+            <version>${swagger.akka.http.version}</version>
         </dependency>
         <dependency>
             <groupId>co.pragmati</groupId>
             <artifactId>swagger-ui-akka-http_2.11</artifactId>
-            <version>1.0.0</version>
+            <version>${swagger.ui.akka.http.version}</version>
         </dependency>
         <dependency>
             <groupId>de.heikoseeberger</groupId>
             <artifactId>akka-http-json4s_2.11</artifactId>
-            <version>1.19.0</version>
+            <version>${akka.http.json4s.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.3</version>
+            <version>${logback.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <version>1.4.197</version>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-client</artifactId>
+            <version>${elastic.rest.client.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.annotations.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-jackson_2.11</artifactId>
+            <version>${json4s.version}</version>
         </dependency>
     </dependencies>
 
@@ -96,6 +116,20 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -115,6 +149,8 @@
                                         implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                     <resource>reference.conf</resource>
                                 </transformer>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>

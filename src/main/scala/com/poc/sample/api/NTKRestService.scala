@@ -1,46 +1,37 @@
 package com.poc.sample.api
 
-import java.sql.{Connection, PreparedStatement, ResultSet, Statement}
-import java.time.LocalDateTime
-
-import akka.http.scaladsl.server.{Directives, Route}
+import akka.actor.ActorRef
+import akka.http.scaladsl.server.Directives
 import akka.http.scaladsl.server.directives.Credentials
+import akka.pattern.ask
 import akka.util.Timeout
+import com.poc.sample.domain.Models.{BasicAuthCredentials, LoggedInUser}
 import com.typesafe.scalalogging.LazyLogging
 import io.swagger.annotations._
 import javax.ws.rs.Path
-import org.h2.jdbcx.JdbcDataSource
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+
 
 @Path("/ntk")
 @Api(value = "/ntk", description = "Operations about NTK", produces = "application/json")
-class NTKRestService extends LazyLogging with Directives {
+class NTKRestService(implicit elasticServiceActor: ActorRef) extends LazyLogging with Directives {
 
   implicit val timeout = Timeout(15.seconds)
 
   import com.poc.sample.domain.NTKProtocol._
 
   val ntkRoutes = pathPrefix("ntk") {
-    ntkAPIPostRoute ~ ntkAPIGetRoute ~ basicAuthRoute
+    ntkAPIGetRoute ~ basicAuthRoute
   }
-
-  case class BasicAuthCredentials(username: String, password: String)
 
   private val loggedInUsers = mutable.ArrayBuffer.empty[LoggedInUser]
   private val validBasicAuthCredentials = Seq(BasicAuthCredentials("admin", "admin"))
-
-  case class OAuthToken(access_token: String = java.util.UUID.randomUUID().toString,
-                        token_type: String = "bearer",
-                        expires_in: Int = 3600)
-
-  case class LoggedInUser(basicAuthCredentials: BasicAuthCredentials,
-                          oAuthToken: OAuthToken = new OAuthToken,
-                          loggedInAt: LocalDateTime = LocalDateTime.now())
 
   def myUserPassAuthenticator(credentials: Credentials): Future[Option[BasicAuthCredentials]] =
     credentials match {
@@ -96,26 +87,24 @@ class NTKRestService extends LazyLogging with Directives {
       get {
         authenticateOAuth2(realm = "oauth", oAuthAuthenticator) { validToken =>
           complete {
-            val conn: Connection = getJDBCConnection
-            val stmt = conn.createStatement
-            val sql = "select * from employee"
-            val resultSet: ResultSet = stmt.executeQuery(sql)
-            val employeeList = new ListBuffer[Employee]()
-            while (resultSet.next) {
-              val id = resultSet.getInt("id")
-              val age = resultSet.getInt("age")
-              val name = resultSet.getString("name")
-              val employee = Employee(id, age, name)
-              employeeList += employee
+            val askFutureResponse = elasticServiceActor ? "Hi"
+            askFutureResponse.collect({
+              case returnString: String => {
+                val responseMap = parse(returnString).extract[Map[String, Any]]
+                responseMap
+              }
+            }).recover({
+              case financeInternalException: Exception => {
+                throw financeInternalException
+              }
             }
-            logger.info("Employee table has been queried with total count" + employeeList.size)
-            employeeList
+            )
           }
         }
       }
     }
 
-  @Path("employee")
+  /*@Path("employee")
   @ApiOperation(value = "NTK API Post service", nickname = "NTK-Post-Service", httpMethod = "POST", produces = "application/json")
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "Authorization", dataType = "java.lang.String", paramType = "header", required = true),
@@ -151,14 +140,8 @@ class NTKRestService extends LazyLogging with Directives {
         }
 
       }
-    }
+    }*/
 
 
-  private def getJDBCConnection = {
-    val ds = new JdbcDataSource()
-    ds.setURL("jdbc:h2:~/test")
-    ds.setUser("sa")
-    ds.setPassword("")
-    ds.getConnection()
-  }
+
 }
